@@ -8,5 +8,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копіюємо код бота
 COPY . .
 
-# Стартуємо бота
+# Запускаємо бота
 CMD ["python", "bot.py"]
