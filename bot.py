@@ -21,7 +21,7 @@ scope = [
 ]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 client = gspread.authorize(creds)
-sheet = client.open("Fitness Clients").sheet1  # назва таблиці
+sheet = client.open("fitness clients").sheet1  # назва таблиці
 
 # Логування
 logging.basicConfig(level=logging.INFO)
