@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 import os, json
 
 # ===== НАЛАШТУВАННЯ =====
-API_TOKEN = os.getenv("API_TOKEN")
-MONO_URL = os.getenv("MONO_URL")
+API_TOKEN = os.getenv("API_TOKEN")  # !!! збережи у PythonAnywhere Env Variables
+MONO_URL = os.getenv("MONO_URL")    # посилання на оплату
 
 # Google Sheets (читаємо JSON із змінної середовища)
 creds_json = json.loads(os.getenv("GOOGLE_CREDS"))
@@ -21,7 +21,10 @@ scope = [
 ]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 client = gspread.authorize(creds)
-sheet = client.open("fitness clients").sheet1  # назва таблиці
+
+# !!! ВАЖЛИВО: використовуємо open_by_key замість open("назва")
+spreadsheet = client.open_by_key("ВСТАВ_СВІЙ_ID_ТАБЛИЦІ")  
+sheet = spreadsheet.sheet1
 
 # Логування
 logging.basicConfig(level=logging.INFO)
@@ -45,13 +48,13 @@ async def start_command(message: types.Message):
     await message.answer("Привіт 👋 Я твій фітнес-бот!\n\nВведи своє ім'я:")
 
 
-@dp.message_handler(lambda msg: msg.text and "name" not in user_data)
+@dp.message_handler(lambda msg: "name" not in user_data)
 async def get_name(message: types.Message):
     user_data["name"] = message.text
     await message.answer("Чудово ✅ Тепер введи свій номер телефону:")
 
 
-@dp.message_handler(lambda msg: msg.text and msg.text.isdigit() and "phone" not in user_data)
+@dp.message_handler(lambda msg: msg.text.isdigit() and "phone" not in user_data)
 async def get_phone(message: types.Message):
     user_data["phone"] = message.text
 
@@ -68,7 +71,13 @@ async def get_package(message: types.Message):
     user_id = message.from_user.id
 
     # Запис у Google Sheets
-    sheet.append_row([user_data["name"], user_data["phone"], user_data["package"], str(datetime.now().date()), str(user_id)])
+    sheet.append_row([
+        user_data["name"],
+        user_data["phone"],
+        user_data["package"],
+        str(datetime.now().date()),
+        str(user_id)
+    ])
 
     # Повідомлення про безкоштовний тиждень
     await message.answer(
@@ -98,16 +107,15 @@ async def get_package(message: types.Message):
 
 
 # ===== ПІДТВЕРДЖЕННЯ ОПЛАТИ =====
-PRIVATE_CHANNEL_LINK = "https://t.me/+I-uJW1moLLVkNmMy"  # ⚠️ заміни на своє посилання на канал
+PRIVATE_CHANNEL_LINK = "https://t.me/+I-uJW1moLLVkNmMy"  # заміни на своє посилання
 
 @dp.message_handler(lambda msg: msg.text.lower() == "оплатив")
 async def confirm_payment(message: types.Message):
     await message.answer(
         "Дякую за оплату 🙏\n\n"
-        "Ось твоє посилання на приватний канал з матеріалами та підтримкою 👇\n"
+        "Ось твоє посилання на приватний канал 👇\n"
         f"{PRIVATE_CHANNEL_LINK}"
     )
-
 
 
 # ===== СТАРТ БОТА =====
