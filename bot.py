@@ -74,20 +74,20 @@ async def get_package(message: types.Message):
     # Запис у Google Sheets
     sheet.append_row([user_data["name"], user_data["phone"], user_data["package"], str(datetime.now().date()), str(user_id)])
 
-    # Безкоштовний тиждень
+    # Повідомлення про безкоштовний тиждень
     await message.answer(
         f"Реєстрація завершена ✅\n"
         f"Тепер у тебе є 7 днів безкоштовного пробного періоду 🎁\n"
         f"Я нагадаю про оплату на 8-й день 😉"
     )
 
-    # нове повідомлення для користувача
-    await message.answer("Очікуй повідомлення від тренера 📩")
-    
-    # Плануємо повідомлення на 8-й день
+    # Додаткове повідомлення
+    await message.answer("⏳ Очікуй повідомлення від тренера 📩")
+
+    # --- Плануємо перше нагадування (через 7 днів)
     run_date = datetime.now() + timedelta(days=7)
 
-    async def send_payment():
+    async def send_first_payment():
         keyboard = types.InlineKeyboardMarkup().add(
             types.InlineKeyboardButton("💳 Придбати пакет", url=MONO_URL)
         )
@@ -98,7 +98,27 @@ async def get_package(message: types.Message):
             reply_markup=keyboard
         )
 
-    scheduler.add_job(send_payment, "date", run_date=run_date)
+    scheduler.add_job(send_first_payment, "date", run_date=run_date)
+
+    # --- Плануємо регулярні нагадування кожні 4 тижні
+    async def send_regular_reminder():
+        keyboard = types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton("💳 Оплатити підписку", url=MONO_URL)
+        )
+        await bot.send_message(
+            user_id,
+            "⚠️ Нагадую, що твоя підписка завершується завтра.\n"
+            "Будь ласка, продовж її, щоб не втратити доступ до тренувань!",
+            reply_markup=keyboard
+        )
+
+    # Перше регулярне нагадування через 27 днів (за день до закінчення 4 тижнів)
+    scheduler.add_job(send_regular_reminder, "date", run_date=datetime.now() + timedelta(days=27))
+
+    # Далі — кожні 4 тижні
+    scheduler.add_job(send_regular_reminder, "interval", weeks=4, start_date=datetime.now() + timedelta(days=27))
+
+    # Очищаємо тимчасові дані
     user_data.clear()
 
 # ===== ПІДТВЕРДЖЕННЯ ОПЛАТИ =====
