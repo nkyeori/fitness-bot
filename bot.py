@@ -8,11 +8,19 @@ from datetime import datetime, timedelta
 import os, json
 
 # ===== НАЛАШТУВАННЯ =====
-API_TOKEN = os.getenv("API_TOKEN")  # !!! збережи у PythonAnywhere Env Variables
-MONO_URL = os.getenv("MONO_URL")    # посилання на оплату
+API_TOKEN = os.getenv("API_TOKEN")   # ⚠️ Читаємо токен з Config Vars
+MONO_URL = os.getenv("MONO_URL")     # ⚠️ Читаємо посилання на оплату з Config Vars
+GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")  # ⚠️ Твої JSON креденшіали
 
-# Google Sheets (читаємо JSON із змінної середовища)
-creds_json = json.loads(os.getenv("GOOGLE_CREDS"))
+if not API_TOKEN:
+    raise ValueError("❌ Не знайдено API_TOKEN у Config Vars!")
+if not MONO_URL:
+    raise ValueError("❌ Не знайдено MONO_URL у Config Vars!")
+if not GOOGLE_CREDS:
+    raise ValueError("❌ Не знайдено GOOGLE_CREDS у Config Vars!")
+
+# Google Sheets
+creds_json = json.loads(GOOGLE_CREDS)
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/spreadsheets",
@@ -22,8 +30,8 @@ scope = [
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 client = gspread.authorize(creds)
 
-# !!! ВАЖЛИВО: використовуємо open_by_key замість open("назва")
-spreadsheet = client.open_by_key("1NafZ0VmtlMzUvV5vujoiK4x3y0PEop7wJIzYXAlfS5E") 
+# ⚠️ заміни ID на свій з Google Sheets
+spreadsheet = client.open_by_key("1NafZ0VmtlMzUvV5vujoiK4x3y0PEop7wJIzYXAlfS5E")
 sheet = spreadsheet.sheet1
 
 # Логування
@@ -40,30 +48,23 @@ scheduler.start()
 # Тимчасові дані користувача
 user_data = {}
 
-
 # ===== ОБРОБНИКИ =====
 @dp.message_handler(commands=['start'])
 async def start_command(message: types.Message):
     user_data.clear()
     await message.answer("Привіт 👋 Я твій фітнес-бот!\n\nВведи своє ім'я:")
 
-
-@dp.message_handler(lambda msg: "name" not in user_data)
+@dp.message_handler(lambda msg: msg.text and "name" not in user_data)
 async def get_name(message: types.Message):
     user_data["name"] = message.text
     await message.answer("Чудово ✅ Тепер введи свій номер телефону:")
 
-
-@dp.message_handler(lambda msg: msg.text.isdigit() and "phone" not in user_data)
+@dp.message_handler(lambda msg: msg.text and msg.text.isdigit() and "phone" not in user_data)
 async def get_phone(message: types.Message):
     user_data["phone"] = message.text
-
-    # Пакети послуг
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add("🍎 Харчування", "💪 Тренування", "🔥 All In")
-
     await message.answer("Вибери пакет послуг:", reply_markup=keyboard)
-
 
 @dp.message_handler(lambda msg: msg.text in ["🍎 Харчування", "💪 Тренування", "🔥 All In"])
 async def get_package(message: types.Message):
@@ -71,15 +72,9 @@ async def get_package(message: types.Message):
     user_id = message.from_user.id
 
     # Запис у Google Sheets
-    sheet.append_row([
-        user_data["name"],
-        user_data["phone"],
-        user_data["package"],
-        str(datetime.now().date()),
-        str(user_id)
-    ])
+    sheet.append_row([user_data["name"], user_data["phone"], user_data["package"], str(datetime.now().date()), str(user_id)])
 
-    # Повідомлення про безкоштовний тиждень
+    # Безкоштовний тиждень
     await message.answer(
         f"Реєстрація завершена ✅\n"
         f"Тепер у тебе є 7 днів безкоштовного пробного періоду 🎁\n"
@@ -101,13 +96,10 @@ async def get_package(message: types.Message):
         )
 
     scheduler.add_job(send_payment, "date", run_date=run_date)
-
-    # Очищаємо тимчасові дані
     user_data.clear()
 
-
 # ===== ПІДТВЕРДЖЕННЯ ОПЛАТИ =====
-PRIVATE_CHANNEL_LINK = "https://t.me/+I-uJW1moLLVkNmMy"  # заміни на своє посилання
+PRIVATE_CHANNEL_LINK = os.getenv("PRIVATE_CHANNEL_LINK") or "https://t.me/+твій_канал"
 
 @dp.message_handler(lambda msg: msg.text.lower() == "оплатив")
 async def confirm_payment(message: types.Message):
@@ -116,7 +108,6 @@ async def confirm_payment(message: types.Message):
         "Ось твоє посилання на приватний канал 👇\n"
         f"{PRIVATE_CHANNEL_LINK}"
     )
-
 
 # ===== СТАРТ БОТА =====
 if __name__ == '__main__':
