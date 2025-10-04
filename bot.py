@@ -23,7 +23,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 client = gspread.authorize(creds)
 
 # !!! ВАЖЛИВО: використовуємо open_by_key замість open("назва")
-spreadsheet = client.open_by_key("1NafZ0VmtlMzUvV5vujoiK4x3y0PEop7wJIzYXAlfS5E")  
+spreadsheet = client.open_by_key(os.getenv("GOOGLE_SHEET_KEY")) 
 sheet = spreadsheet.sheet1
 
 # Логування
