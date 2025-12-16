@@ -73,9 +73,9 @@ async def get_package(message: types.Message):
 
     # --- Базові ціни ---
     base_prices = {
-        "🍎 Харчування": 2000,
-        "💪 Тренування": 2000,
-        "🔥 All In": 3500
+        "🍎 Харчування": 1500,
+        "💪 Тренування": 1500,
+        "🔥 All In": 2500
     }
     base_price = base_prices[user_data["package"]]
 
